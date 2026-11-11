@@ -63,6 +63,16 @@ def run_evaluation_pipeline(
         "total_extracted": len(extracted_results),
         "total_evaluations": len(evaluation_results),
         "total_errors": len(errors),
+        "responses": [
+            {
+                "provider": response.provider,
+                "model": response.model,
+                "status": response.status,
+                "response_text": response.response_text,
+                "error_message": response.error_message,
+            }
+            for response in responses
+        ],
         "extracted_results": extracted_results,
         "evaluation_results": evaluation_results,
         "errors": errors

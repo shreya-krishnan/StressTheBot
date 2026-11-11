@@ -74,8 +74,6 @@ def test_experiment_api_success(monkeypatch):
 
     app.dependency_overrides[get_experiment_runner] = lambda: runner
 
-    client = TestClient(app)
-
     payload = {
         "rule_id": "API_TEST001",
         "parameter_sets": [
@@ -95,22 +93,23 @@ def test_experiment_api_success(monkeypatch):
     }
 
     try:
-        response = client.post(
-            "/api/experiments/run",
-            json=payload
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/experiments/run",
+                json=payload
+            )
 
-        assert response.status_code == 200
+            assert response.status_code == 200
 
-        data = response.json()
+            data = response.json()
 
-        assert data["experiment_status"] == "completed"
-        assert data["risk_mapping"]["total_risk_records"] == 1
+            assert data["experiment_status"] == "completed"
+            assert data["risk_mapping"]["total_risk_records"] == 1
 
-        assert (
-            data["risk_mapping"]["risk_records"][0]["status"]
-            == "potential_violation"
-        )
+            assert (
+                data["risk_mapping"]["risk_records"][0]["status"]
+                == "potential_violation"
+            )
 
     finally:
         app.dependency_overrides.clear()
@@ -133,8 +132,6 @@ def test_experiment_api_rejects_unapproved_rule(monkeypatch):
 
     app.dependency_overrides[get_experiment_runner] = lambda: runner
 
-    client = TestClient(app)
-
     payload = {
         "rule_id": "API_TEST001",
         "parameter_sets": [{"age": 45}],
@@ -151,17 +148,18 @@ def test_experiment_api_rejects_unapproved_rule(monkeypatch):
     }
 
     try:
-        response = client.post(
-            "/api/experiments/run",
-            json=payload
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/experiments/run",
+                json=payload
+            )
 
-        assert response.status_code == 200
+            assert response.status_code == 200
 
-        data = response.json()
+            data = response.json()
 
-        assert data["rule_status"] == "draft"
-        assert data["research_only"] is True
+            assert data["rule_status"] == "draft"
+            assert data["research_only"] is True
 
     finally:
         app.dependency_overrides.clear()

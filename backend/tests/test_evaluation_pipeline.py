@@ -58,6 +58,16 @@ def test_complete_evaluation_pipeline():
     assert result["total_extracted"] == 1
     assert result["total_evaluations"] == 2
     assert result["total_errors"] == 0
+    assert result["responses"] == [{
+        "provider": "mock",
+        "model": "mock-model",
+        "status": "success",
+        "response_text": (
+            "Monitor renal function regularly. "
+            "The medication should be used despite the warning."
+        ),
+        "error_message": None,
+    }]
 
     statuses = [
         item["status"]
@@ -89,3 +99,38 @@ def test_pipeline_handles_provider_failure():
     assert result["total_errors"] == 1
 
     assert result["errors"][0]["stage"] == "llm_query"
+    assert result["responses"] == [{
+        "provider": "mock",
+        "model": "unknown",
+        "status": "error",
+        "response_text": None,
+        "error_message": "Simulated API failure",
+    }]
+
+
+def test_pipeline_preserves_successful_response_when_extraction_fails(monkeypatch):
+    runner = LLMRunner({"mock": MockLLMClient()})
+
+    def fail_extraction(_response):
+        raise RuntimeError("Simulated extraction failure")
+
+    monkeypatch.setattr("app.evaluation.pipeline.extract_response", fail_extraction)
+
+    result = run_evaluation_pipeline(
+        runner=runner,
+        scenario_id="TEST001-S001",
+        prompt="Synthetic patient scenario",
+        checks=[],
+    )
+
+    assert result["total_responses"] == 1
+    assert result["total_extracted"] == 0
+    assert result["responses"][0]["provider"] == "mock"
+    assert result["responses"][0]["model"] == "mock-model"
+    assert result["responses"][0]["status"] == "success"
+    assert result["responses"][0]["response_text"].startswith("Monitor renal")
+    assert result["errors"] == [{
+        "provider": "mock",
+        "stage": "extraction_or_evaluation",
+        "error": "Simulated extraction failure",
+    }]
